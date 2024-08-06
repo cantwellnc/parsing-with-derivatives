@@ -12,6 +12,9 @@
 ;; and the others are the args to that combinator. 
 
 ;; (:alt a b) => a choice of matching a or b. Typically denoted a | b or a ∪ b
+;; Note: In the OG paper, the defintions of the derivative/the regex-empty fn actually work
+;; for ANY boolean connective f(P, Q), not just alternation (P ∪ Q). He gives many examples like
+;; complement with respect to a universal set, set difference, xor, intersection, etc.
 (defn regex-alt? [re]
   (and (seq? re) (= (first re) :alt)))
 
@@ -36,7 +39,7 @@
 ;; deconstructors 
 ;; used for accessing the parts of seq, alt, rep
 
-(defn match-alt 
+(defn match-alt
   "if re is of the form (:alt a b), return (f a b), else"
   [re f]
   (and (regex-alt? re)
@@ -44,15 +47,15 @@
          (f choice-1 choice-2))))
 
 
-(defn match-seq 
-  "if re is of the form (:seq a b), return (f a b), else false" 
+(defn match-seq
+  "if re is of the form (:seq a b), return (f a b), else false"
   [re f]
   (and  (regex-seq? re)
         (let [[_ first-item second-item] re]
           (f first-item second-item))))
 
-(defn match-rep 
-  "if re is of the form (:rep a), return (f a), else false" 
+(defn match-rep
+  "if re is of the form (:rep a), return (f a), else false"
   [re f]
   (and  (regex-rep? re)
         (let [[_ to-repeat] re]
@@ -93,17 +96,17 @@
    Recursively builds a tower of if-lets so that we can always 
    refer to the result of the test in expr if we need to.
    "
-  [& clauses] 
+  [& clauses]
   (when-let [[test-binding result-expr & rest-clauses] clauses]
     (list 'if-let test-binding
-            result-expr
-            (cons 'cond-let rest-clauses))))
+          result-expr
+          (cons 'cond-let rest-clauses))))
 
 (comment
   (cond-let
    [a (> (+ 1 2) 0)] :nice
-   [b (when true (println "bad"))] :not-nice) ;; => :nice
-  )  
+   [b (when true (println "bad"))] :not-nice)) ;; => :nice
+
 
 
 (defn regex-empty
@@ -116,9 +119,9 @@
    [result (match-seq re (fn [pat1 pat2] (seq (regex-empty pat1) (regex-empty pat2))))] result
    [result (match-alt re (fn [pat1 pat2] (alt (regex-empty pat1) (regex-empty pat2))))] result
    [_ (regex-rep? re)] true
-   [_ :else] false)
-  )
-  
+   [_ :else] false))
+
+
 (comment
   (regex-empty regex-NULL) ;; => false
   (regex-empty regex-BLANK) ;; => true
@@ -127,8 +130,8 @@
   (regex-empty (seq regex-BLANK "b")) ;; => false
   (regex-empty (seq regex-BLANK regex-BLANK)) ;; => true 
   (regex-empty (rep "a")) ;; => true 
-  (regex-empty (seq regex-BLANK (alt regex-BLANK "a"))) ;; => true 
-  )  
+  (regex-empty (seq regex-BLANK (alt regex-BLANK "a")))) ;; => true 
+
 
 ;; is there a way to express the complement of a regex using this? 
 
@@ -138,18 +141,18 @@
   [re c]
   (println "DERIVATIVE")
   (println "pattern: " re)
-  (println "char: " c) 
+  (println "char: " c)
   (cond-let
    [_ (regex-empty? re)] regex-NULL
-   [_ (regex-null? re)] regex-NULL 
+   [_ (regex-null? re)] regex-NULL
    [_ (= re c)] regex-BLANK ;; re is exactly c, so the derivative is the empty regex
    [_ (regex-atom? re)] regex-NULL ;; it's some atom that is not c, so no match
-   [result (match-seq re (fn ;; product rule
+   [result (match-seq re (fn ;; "product rule"
                            [pat1 pat2]
                            (alt
                             (seq (regex-empty pat1) (derivative pat2 c))
                             (seq (derivative pat1 c) pat2))))] result
-   [result (match-alt re (fn [pat1 pat2] ;; sum rule
+   [result (match-alt re (fn [pat1 pat2] ;; "sum rule"
                            (alt
                             (derivative pat1 c)
                             (derivative pat2 c))))] result
@@ -161,30 +164,34 @@
 (defn regex-match
   "checks if `pattern` matches `data` using the derivative 
    with respect to the data as a matching algorithm."
-  [pattern data] 
+  [pattern data]
   (println "PATTERN: " pattern)
   (println "DATA: " data)
 
   (if (empty? data)
     (regex-empty? (regex-empty pattern))
-    (regex-match (derivative pattern (first data)) (rest data)))) 
+    (regex-match (derivative pattern (first data)) (rest data))))
 
 
 (comment
-  
   ;; the regex "dog" should match the string "dog"
   ;; we have to represent everything as lists of characters with the current 
   ;; impl which is a but unwieldy, but fixable.
   (regex-match `(:seq (:seq "d" "o") "g") `("d" "o" "g"))
+  (regex-match `(:seq (:seq "d" "o") "g") `("d" "o" "L"))
 
   ;; blog post example: do(g|t) should match "dog" and "dot"
   (and (regex-match `(:seq (:seq "d" "o") (:alt "g" "t")) `("d" "o" "g"))
        (regex-match `(:seq (:seq "d" "o") (:alt "g" "t")) `("d" "o" "t"))) ;; => true
-
+  
   ;; but not "doll"
-  (regex-match `(:seq (:seq "d" "o") (:alt "g" "t")) `("d" "o" "l" "l")) ;; => false
+  (regex-match `(:seq (:seq "d" "o") (:alt "g" "t")) `("d" "o" "l" "l"))
+  ) ;; => false
 
-  )
+  
+
+
+
 
 
 
