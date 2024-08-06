@@ -177,16 +177,15 @@
   ;; the regex "dog" should match the string "dog"
   ;; we have to represent everything as lists of characters with the current 
   ;; impl which is a but unwieldy, but fixable.
-  (regex-match `(:seq (:seq "d" "o") "g") `("d" "o" "g"))
-  (regex-match `(:seq (:seq "d" "o") "g") `("d" "o" "L"))
+  (regex-match `(:seq (:seq "d" "o") "g") `("d" "o" "g")) ;; => true
 
   ;; blog post example: do(g|t) should match "dog" and "dot"
   (and (regex-match `(:seq (:seq "d" "o") (:alt "g" "t")) `("d" "o" "g"))
        (regex-match `(:seq (:seq "d" "o") (:alt "g" "t")) `("d" "o" "t"))) ;; => true
   
   ;; but not "doll"
-  (regex-match `(:seq (:seq "d" "o") (:alt "g" "t")) `("d" "o" "l" "l"))
-  ) ;; => false
+  (regex-match `(:seq (:seq "d" "o") (:alt "g" "t")) `("d" "o" "l" "l"));; => false
+  ) 
 
   
 
